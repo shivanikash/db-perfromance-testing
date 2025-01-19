@@ -1,18 +1,27 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { randomIntBetween } from 'k6/crypto';
+//import { randomIntBetween } from 'k6/crypto';
 
 export const options = {
   scenarios: {
-    hr_app: {
-      executor: 'ramping-vus',
-      startVUs: 0,
-      stages: [
-         { duration: '2m', target: 8 },
-         { duration: '5m', target: 8 },
-        { duration: '2m', target: 0 }
-      ],
-      exec: 'hrApp'
+    movie_matrix: {
+
+// Stress testing
+//      executor: 'ramping-vus',
+//      startVUs: 0,
+//      stages: [
+//         { duration: '2m', target: 8 },
+//         { duration: '5m', target: 8 },
+//        { duration: '2m', target: 0 }
+//      ],
+//      exec: 'movieMatrixApp'
+
+// Load testing
+      executor: 'constant-vus',
+      vus: 1000,
+      duration: '10m',
+      exec: 'movieMatrixApp'
+
     }
   },
   thresholds: {
@@ -21,8 +30,17 @@ export const options = {
 };
 
 const BASE_URLS = {
-  HR_APP: __ENV.HR_APP_URL || 'http://hr-app:4000'
+  MOVIE_MATRIX: __ENV.MOVIE_MATRIX_URL || 'http://movie-matrix:4000'
 };
+
+export default function () {
+  const url = `${BASE_URLS.MOVIE_MATRIX}/health`;  // dynamic base URL
+  const response = http.get(url);
+
+  check(response, {
+    'status is 200': (r) => r.status === 200,
+  });
+}
 
 function makeRequest(baseUrl, endpoint) {
   const url = `${baseUrl}${endpoint.path}`;
@@ -53,23 +71,30 @@ function makeRequest(baseUrl, endpoint) {
     sleep(randomIntBetween(1, 3));
 
   } catch (err) {
-    sleep(2); // Sleep on error
+        console.error(`Error during request to ${endpoint.path}: ${err.message}`);
+        sleep(2); // Sleep on error
   }
 }
 
-// HR Portal endpoints
-export function hrApp() {
+// Movie-Matrix endpoints
+export function movieMatrixApp() {
   const endpoints = [
     { path: '/actors/top_by_film_count', method: 'GET' },
-     { path: '/customers/top_spenders', method: 'GET' }
-//     { path: '/admin/departments/details', method: 'GET' },
-//    // { path: '/hr/employees/transfer', method: 'POST' },
-//     { path: '/admin/employees/details', method: 'GET' },
-//     { path: '/admin/employees/update_multiple', method: 'GET' },
-//     { path: '/admin/reports/salary_audit', method: 'GET' },
-//     { path: '/admin/reports/transfer_audit', method: 'GET' },
-//     { path: '/admin/employees/bulk_title_update', method: 'PUT' },
-//     { path: '/admin/employees/data_export', method: 'GET' }
+     { path: '/customers/top_spenders', method: 'GET' },
+     { path: '/store-rental-income', method: 'GET' }
+//      { path: '/add-customer-rental', method: 'POST' },
+//     { path: '/update-inventory/:film_id', method: 'PUT' },
+//     { path: '/add-payment', method: 'POST' }
   ];
-  makeRequest(BASE_URLS.HR_APP, endpoints[Math.floor(Math.random() * endpoints.length)]);
+//  makeRequest(BASE_URLS.MOVIE_MATRIX, endpoints[Math.floor(Math.random() * endpoints.length)]);
+
+  const randomEndpoint = endpoints[Math.floor(Math.random() * endpoints.length)];
+
+  // Make the request to the randomly selected endpoint
+  makeRequest(BASE_URLS.MOVIE_MATRIX, randomEndpoint);
+}
+
+// function to simulate `randomIntBetween` if needed
+function randomIntBetween(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
