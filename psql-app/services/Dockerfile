@@ -5,7 +5,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm install
 
-ARG PORT=4000
+ARG PORT=5000
 ENV PORT=${PORT}
 
 COPY . .

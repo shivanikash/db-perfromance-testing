@@ -1,5 +1,5 @@
-const newrelic = require("newrelic");
-console.log("New Relic agent status:", newrelic.agent.config.agent_enabled);
+//const newrelic = require("newrelic");
+//console.log("New Relic agent status:", newrelic.agent.config.agent_enabled);
 const express = require("express");
 const { Pool } = require('pg');
 
@@ -38,7 +38,7 @@ async function startMovieMatrixApp() {
     password: process.env.PSQL_PASSWORD || '',
     database: process.env.PSQL_DATABASE || 'pagila',
     max: 20,
-    idleTimeoutMillis: 300000
+    idleTimeoutMillis: 120000
   });
 
   pool.on('connect', async (client) => {
@@ -70,7 +70,7 @@ async function startMovieMatrixApp() {
 
   // 1. Search by hire_date (missing index)
     app.get('/actors/top_by_film_count', async (req, res) => {
-      newrelic.setTransactionName('fetch-top-actors-by-film-count');
+//      newrelic.setTransactionName('fetch-top-actors-by-film-count');
       let client;
       try {
         client = await pool.connect();
@@ -90,7 +90,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-        newrelic.noticeError(err);
+//        newrelic.noticeError(err);
         console.error(`/actors/top_by_film_count | Error: ${err.message}`, err);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -100,7 +100,7 @@ async function startMovieMatrixApp() {
 
     // 2. Search by name or department (inefficient OR + LIKE)
     app.get('/customers/top_spenders', async (req, res) => {
-      newrelic.setTransactionName('fetch-top-spenders-customer');
+//      newrelic.setTransactionName('fetch-top-spenders-customer');
       let client;
       try {
         client = await pool.connect();
@@ -118,7 +118,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-        newrelic.noticeError(err);
+//        newrelic.noticeError(err);
         res.status(500).json({ error: err.message });
       } finally {
         if (client) client.release();
@@ -127,7 +127,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/store-rental-income', async (req, res) => {
-      newrelic.setTransactionName('fetch-store-rental-income');
+//      newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -149,7 +149,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-        newrelic.noticeError(err);
+//        newrelic.noticeError(err);
         console.error('fetch-store-rental-income | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -157,140 +157,1215 @@ async function startMovieMatrixApp() {
       }
     });
 
-//     Insert a new customer and rental in a transaction
-//     app.post('/add-customer-rental', async (req, res) => {
-//       newrelic.setTransactionName('add-customer-and-rental');
-//       let client;
-//       try {
-//         client = await pool.connect();
-//         await client.query('BEGIN');
-//         const { store_id, first_name, last_name, email, address, rental_info } = req.body;
-//
-//         const addressResult = await client.query(
-//           `INSERT INTO address (address, address2, district, city_id, postal_code, phone)
-//            VALUES ($1, $2, $3, $4, $5, $6)
-//            RETURNING address_id`,
-//           [address.address, address.address2, address.district, address.city_id, address.postal_code, address.phone]
-//         );
-//
-//         const address_id = addressResult.rows[0].address_id;
-//
-//         const customerResult = await client.query(
-//           `INSERT INTO customer (store_id, first_name, last_name, email, address_id, activebool, create_date)
-//            VALUES ($1, $2, $3, $4, $5, TRUE, NOW())
-//            RETURNING customer_id`,
-//           [store_id, first_name, last_name, email, address_id]
-//         );
-//
-//         const customer_id = customerResult.rows[0].customer_id;
-//
-//         await client.query(
-//           `INSERT INTO rental (rental_date, inventory_id, customer_id, return_date, staff_id)
-//            VALUES (NOW(), $1, $2, $3, $4)`,
-//           [rental_info.inventory_id, customer_id, rental_info.return_date, rental_info.staff_id]
-//         );
-//
-//         await client.query('COMMIT');
-//         res.status(201).json({ message: 'Customer and rental added successfully' });
-//       } catch (err) {
-//         await client.query('ROLLBACK');
-//         console.error(err);
-//         res.status(500).json({ error: 'Transaction failed' });
-//       } finally {
-//         if (client) client.release();
-//       }
-//     });
+    // Get total rental income by store
+    app.get('/all-customers', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
 
-// Update film inventory across multiple stores
-//app.put('/update-inventory/:film_id', async (req, res) => {
-//  newrelic.setTransactionName('update-inventory-across-stores');
-//  let client;
-//  try {
-//    client = await pool.connect();
-//    await client.query('BEGIN');
-//
-//    const { film_id } = req.params;
-//    const { store_update } = req.body;
-//
-//    for (const { store_id, new_inventory_count } of store_update) {
-//      await client.query(
-//        `UPDATE inventory
-//         SET film_id = $1
-//         WHERE store_id = $2
-//         LIMIT $3`,
-//        [film_id, store_id, new_inventory_count]
-//      );
-//    }
-//
-//    await client.query('COMMIT');
-//    res.json({ status: 'ok', message: 'Inventory updated successfully across stores' });
-//  } catch (err) {
-//    if (client) {
-//      await client.query('ROLLBACK');
-//    }
-//    newrelic.noticeError(err);
-//    res.status(500).json({ error: `Database error: ${err.message}` });
-//  } finally {
-//    if (client) client.release();
-//  }
-//});
+        const result = await client.query(`
+          SELECT * FROM Customers
+        `);
 
-//Insert a payment record only if the customer has an active rental
-//app.post('/add-payment', async (req, res) => {
-//  newrelic.setTransactionName('add-payment-if-active-rental');
-//  let client;
-//  try {
-//    client = await pool.connect();
-//    await client.query('BEGIN');
-//
-//    const { customer_id, amount, staff_id } = req.body;
-//
-//    const activeRental = await client.query(
-//      `SELECT EXISTS(
-//         SELECT 1 FROM rental
-//         WHERE customer_id = $1 AND return_date IS NULL
-//       ) AS active_rental`,
-//      [customer_id]
-//    );
-//
-//    if (activeRental.rows[0].active_rental) {
-//      const paymentResult = await client.query(
-//        `INSERT INTO payment (customer_id, staff_id, rental_id, amount, payment_date)
-//         SELECT $1, $2, r.rental_id, $3, NOW()
-//         FROM rental r
-//         WHERE r.customer_id = $1 AND r.return_date IS NULL
-//         ORDER BY r.rental_date DESC LIMIT 1
-//         RETURNING payment_id`,
-//        [customer_id, staff_id, amount]
-//      );
-//
-//      await client.query('COMMIT');
-//      res.status(201).json({
-//        status: 'ok',
-//        message: 'Payment added successfully',
-//        payment_id: paymentResult.rows[0].payment_id
-//      });
-//    } else {
-//      await client.query('ROLLBACK');
-//      res.status(400).json({ error: 'No active rental found for this customer' });
-//    }
-//  } catch (err) {
-//    if (client) {
-//      await client.query('ROLLBACK');
-//    }
-//    newrelic.noticeError(err);
-//    res.status(500).json({ error: `Database error: ${err.message}` });
-//  } finally {
-//    if (client) client.release();
-//  }
-//});
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
 
-//const port = process.env.PORT || 4000;
-//app.listen(port, () => console.log(`Movie Matrix App is running on port ${port}`));
-//}
+    // Get total rental income by store
+    app.get('/customer-names', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
 
-const port = process.env.PORT || 4000;
-  app.listen(port, () => console.log(`${new Date().toISOString()} - Movie Matrix App is running on port ${port}`));
+        const result = await client.query(`
+          SELECT first_name, last_name FROM Customers
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-store-rental-income | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get total rental income by store
+    app.get('/customer-lname', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT * FROM Customers WHERE last_name = 'Smith'
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-store-rental-income | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get total rental income by store
+    app.get('/customer-email', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT email FROM Customers WHERE registration_date >= '2023-01-01'
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-store-rental-income | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get total rental income by store
+    app.get('/customer-count', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT COUNT(*) FROM Customers
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-store-rental-income | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get total rental income by store
+    app.get('/customer-dis-name', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT DISTINCT last_name FROM Customers
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-store-rental-income | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get total rental income by store
+    app.get('/customers-order-date', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT * FROM Customers ORDER BY registration_date DESC
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-store-rental-income | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get total rental income by store
+    app.get('/customers-limit-5', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT * FROM Customers LIMIT 5
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+
+    // Get total rental income by store
+    app.get('/customers-null-phone', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT customer_id, first_name, last_name FROM Customers WHERE phone_number IS NULL
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+
+    // Get total rental income by store
+    app.get('/order-items', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT order_id, SUM(quantity) FROM OrderItems GROUP BY order_id
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+
+    // Get total rental income by store
+    app.get('/all-products', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT * FROM Products
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get total rental income by store
+    app.get('/product-price', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT product_name, price FROM Products
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+
+    // Get total rental income by store
+    app.get('/product-price-50', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT * FROM Products WHERE price < 50.00
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+
+    // Get total rental income by store
+    app.get('/avg-product-price', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT AVG(price) FROM Products
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+
+    // Get total rental income by store
+    app.get('/product-category', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT * FROM Products WHERE category = 'Electronics'
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get total rental income by store
+    app.get('/product-stock-0', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT product_name FROM Products WHERE stock_quantity = 0;
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+
+    // Get total rental income by store
+    app.get('/product-clothing-stock', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT SUM(stock_quantity) FROM Products WHERE category = 'Clothing'
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+
+    // Get total rental income by store
+    app.get('/product-order-price', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT * FROM Products ORDER BY price DESC
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+
+    // Get total rental income by store
+    app.get('/product-distinct', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT DISTINCT category FROM Products
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+
+    // Get total rental income by store
+    app.get('/product-new', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT product_id, product_name FROM Products WHERE description LIKE '%new%'
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+
+    // Get total rental income by store
+    app.get('/all-orders', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT * FROM Orders
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-orders | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get total rental income by store
+    app.get('/order-id', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT order_id, order_date FROM Orders WHERE customer_id = 1
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+
+    // Get total rental income by store
+    app.get('/order-shipped', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT * FROM Orders WHERE status = 'Shipped'
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get total rental income by store
+    app.get('/order-amount', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT MAX(total_amount) FROM Orders
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get total rental income by store
+    app.get('/order-march', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT order_id FROM Orders WHERE order_date BETWEEN '2023-03-01' AND '2023-03-31'
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get total rental income by store
+    app.get('/orders-pending', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT COUNT(*) FROM Orders WHERE status = 'Pending'
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get total rental income by store
+    app.get('/avg-amount-customer', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT customer_id, AVG(total_amount) FROM Orders GROUP BY customer_id
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get total rental income by store
+    app.get('/orders-old-date', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT * FROM Orders ORDER BY order_date
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get total rental income by store
+    app.get('/order-amount-100', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result = await client.query(`
+          SELECT order_id, total_amount FROM Orders WHERE total_amount > 100.00
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok', data: result.rows });
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-customers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get all order items
+    app.get('/all-order-items', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result1 = await client.query(`
+          SELECT * FROM OrderItems WHERE product_id = 5
+        `);
+        const result2 = await client.query(`
+          SELECT AVG(price_per_unit) FROM OrderItems
+        `);
+        const result3 = await client.query(`
+          SELECT oi.order_item_id, p.product_name, oi.quantity FROM OrderItems oi JOIN Products p ON oi.product_id = p.product_id
+        `);
+        const result4 = await client.query(`
+          SELECT order_id FROM OrderItems WHERE quantity > 10
+        `);
+        const result5 = await client.query(`
+          SELECT COUNT(DISTINCT order_id) FROM OrderItems
+        `);
+        const result6 = await client.query(`
+          SELECT * FROM OrderItems ORDER BY price_per_unit * quantity DESC
+        `);
+        const result7 = await client.query(`
+          SELECT product_id, SUM(quantity * price_per_unit) FROM OrderItems GROUP BY product_id
+        `);
+        const result8 = await client.query(`
+          SELECT order_item_id, order_id FROM OrderItems WHERE price_per_unit < 10.00
+        `);
+
+        await client.query('COMMIT');
+        res.json({ status: 'ok',
+        data: {
+                orderItemsWithProductId5: result1.rows,
+                averagePricePerUnit: result2.rows[0], // Assuming there's one row in the average query
+                orderItemsWithProductNames: result3.rows,
+                ordersWithQuantityGreaterThan10: result4.rows,
+                distinctOrdersCount: result5.rows[0], // Return the count as a single object
+                orderedItemsByValue: result6.rows,
+                totalSalesByProduct: result7.rows,
+                itemsWithPriceBelow10: result8.rows
+        }});
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-order-items | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get all employees
+    app.get('/all-employees-details', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result1 = await client.query(`
+          SELECT * FROM Employees
+        `);
+        const result2 = await client.query(`
+          SELECT first_name, last_name, job_title FROM Employees
+        `);
+        const result3 = await client.query(`
+         SELECT * FROM Employees WHERE department = 'Sales'
+        `);
+        const result4 = await client.query(`
+          SELECT AVG(salary) FROM Employees
+        `);
+        const result5 = await client.query(`
+          SELECT employee_id, first_name, last_name FROM Employees WHERE salary > 60000.00
+        `);
+        const result6 = await client.query(`
+          SELECT COUNT(*) FROM Employees WHERE job_title LIKE '%Engineer%'
+        `);
+        const result7 = await client.query(`
+          SELECT * FROM Employees ORDER BY hire_date DESC
+        `);
+        const result8 = await client.query(`
+          SELECT department, SUM(salary) FROM Employees GROUP BY department
+        `);
+        const result9 = await client.query(`
+          SELECT first_name, last_name FROM Employees WHERE hire_date BETWEEN '2023-01-01' AND '2023-12-31'
+        `);
+        const result10 = await client.query(`
+          SELECT e.first_name, e.last_name, e.job_title, d.department AS department_name FROM Employees e LEFT JOIN (SELECT DISTINCT department FROM Employees) d ON e.department = d.department
+        `);
+        await client.query('COMMIT');
+        res.json({ status: 'ok',
+        data: {
+            allEmployees: result1.rows,
+            employeeNamesAndTitles: result2.rows,
+            salesDepartmentEmployees: result3.rows,
+            averageSalary: result4.rows[0], // Assuming one row returned for average
+            highSalaryEmployees: result5.rows,
+            engineerCount: result6.rows[0], // Assuming there's one row with the count
+            recentHires: result7.rows,
+            departmentSalaries: result8.rows,
+            hiresIn2023: result9.rows,
+            joinedDepartmentData: result10.rows
+        }});
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-employees | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get all suppliers
+    app.get('/all-suppliers', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result1 = await client.query(`
+          SELECT * FROM Suppliers
+        `);
+        const result2 = await client.query(`
+          SELECT supplier_name, contact_email FROM Suppliers
+        `);
+        const result3 = await client.query(`
+         SELECT * FROM Suppliers WHERE supplier_name LIKE 'A%'
+        `);
+        const result4 = await client.query(`
+          SELECT contact_name FROM Suppliers WHERE contact_email IS NULL
+        `);
+        const result5 = await client.query(`
+          SELECT COUNT(*) FROM Suppliers
+        `);
+        const result6 = await client.query(`
+          SELECT * FROM Suppliers ORDER BY supplier_name DESC
+        `);
+        const result7 = await client.query(`
+          SELECT supplier_id, contact_name FROM Suppliers WHERE contact_phone LIKE '%555%'
+        `);
+        const result8 = await client.query(`
+          SELECT supplier_name FROM Suppliers WHERE contact_name = 'Wile E. Coyote'
+        `);
+        const result9 = await client.query(`
+          SELECT supplier_id, supplier_name FROM Suppliers WHERE contact_email LIKE '%@initech.com'
+        `);
+        const result10 = await client.query(`
+          SELECT supplier_name, contact_phone FROM Suppliers LIMIT 3
+        `);
+        await client.query('COMMIT');
+        res.json({ status: 'ok',
+        data: {
+            allSuppliers: result1.rows,
+            supplierNamesAndEmails: result2.rows,
+            suppliersStartingWithA: result3.rows,
+            contactsWithoutEmail: result4.rows,
+            totalSupplierCount: result5.rows[0], // Assuming one row returned for count
+            suppliersOrderedByNameDesc: result6.rows,
+            suppliersWithSpecificPhone: result7.rows,
+            specificContactSuppliers: result8.rows,
+            suppliersWithInitechEmail: result9.rows,
+            firstThreeSuppliers: result10.rows
+        }});
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-suppliers | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get all payments
+    app.get('/all-payments', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result1 = await client.query(`
+          SELECT * FROM Payments
+        `);
+        const result2 = await client.query(`
+          SELECT payment_id, payment_date FROM Payments WHERE order_id = 3
+        `);
+        const result3 = await client.query(`
+         SELECT * FROM Payments WHERE payment_method = 'Credit Card'
+        `);
+        const result4 = await client.query(`
+          SELECT AVG(amount) FROM Payments
+        `);
+        const result5 = await client.query(`
+          SELECT order_id, SUM(amount) FROM Payments GROUP BY order_id
+        `);
+        const result6 = await client.query(`
+          SELECT * FROM Payments WHERE payment_date BETWEEN '2023-04-01' AND '2023-04-30'
+        `);
+        const result7 = await client.query(`
+          SELECT payment_method, COUNT(*) FROM Payments GROUP BY payment_method
+        `);
+        const result8 = await client.query(`
+          SELECT * FROM Payments ORDER BY amount DESC
+        `);
+        const result9 = await client.query(`
+          SELECT payment_id, amount FROM Payments WHERE amount > 100.00
+        `);
+        const result10 = await client.query(`
+          SELECT p.payment_id, o.order_date, p.amount FROM Payments p JOIN Orders o ON p.order_id = o.order_id
+        `);
+        await client.query('COMMIT');
+        res.json({ status: 'ok',
+        data: {
+            allPayments: result1.rows,
+            paymentsForOrder3: result2.rows,
+            creditCardPayments: result3.rows,
+            averagePaymentAmount: result4.rows[0], // Assuming one row returned for average
+            totalAmountByOrder: result5.rows,
+            paymentsInApril: result6.rows,
+            paymentMethodCounts: result7.rows,
+            paymentsOrderedByAmountDesc: result8.rows,
+            largePayments: result9.rows,
+            paymentsWithOrderDates: result10.rows
+        }});
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-payments | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get all categories
+    app.get('/all-categories', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result1 = await client.query(`
+          SELECT * FROM Categories
+        `);
+        const result2 = await client.query(`
+          SELECT category_name FROM Categories
+        `);
+        const result3 = await client.query(`
+          SELECT * FROM Categories WHERE category_name LIKE '%s'
+        `);
+        const result4 = await client.query(`
+          SELECT description FROM Categories WHERE category_id = 2
+        `);
+        const result5 = await client.query(`
+          SELECT COUNT(*) FROM Categories
+        `);
+        const result6 = await client.query(`
+          SELECT * FROM Categories ORDER BY category_name
+        `);
+        const result7 = await client.query(`
+          SELECT category_id, category_name FROM Categories WHERE description LIKE '%and%'
+        `);
+        const result8 = await client.query(`
+          SELECT category_name FROM Categories WHERE category_id IN (1, 3, 5)
+        `);
+        const result9 = await client.query(`
+          SELECT category_id, category_name FROM Categories LIMIT 3
+        `);
+        const result10 = await client.query(`
+          SELECT c.category_name, p.product_name FROM Categories c LEFT JOIN Products p ON c.category_name = p.category
+        `);
+        await client.query('COMMIT');
+        res.json({ status: 'ok',
+        data: {
+            allCategories: result1.rows,
+            categoryNames: result2.rows,
+            categoriesWithNameEndingS: result3.rows,
+            descriptionForCategory2: result4.rows,
+            totalCategories: result5.rows[0], // Assuming one row returned for count
+            categoriesOrderedByName: result6.rows,
+            categoriesWithDescriptionAnd: result7.rows,
+            specificCategoryNames: result8.rows,
+            firstThreeCategories: result9.rows,
+            categoryProductJoin: result10.rows
+        }});
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-categories | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get all reviews
+    app.get('/all-reviews', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result1 = await client.query(`
+          SELECT * FROM Reviews
+        `);
+        const result2 = await client.query(`
+          SELECT rating, review_text FROM Reviews WHERE product_id = 1
+        `);
+        const result3 = await client.query(`
+         SELECT AVG(rating) FROM Reviews WHERE product_id = 1
+        `);
+        const result4 = await client.query(`
+          SELECT * FROM Reviews WHERE customer_id = 1
+        `);
+        const result5 = await client.query(`
+          SELECT COUNT(*) FROM Reviews WHERE rating = 5
+        `);
+        const result6 = await client.query(`
+          SELECT r.review_id, p.product_name, c.first_name, c.last_name, r.rating FROM Reviews r JOIN Products p ON r.product_id = p.product_id JOIN Customers c ON r.customer_id = c.customer_id
+        `);
+        const result7 = await client.query(`
+          SELECT * FROM Reviews WHERE review_date >= '2023-04-01'
+        `);
+        const result8 = await client.query(`
+          SELECT review_text FROM Reviews WHERE rating < 3
+        `);
+        const result9 = await client.query(`
+          SELECT product_id, AVG(rating) as avg_rating FROM Reviews GROUP BY product_id ORDER BY avg_rating DESC
+        `);
+        const result10 = await client.query(`
+           SELECT review_id, review_text FROM Reviews WHERE review_text LIKE '%great%'
+        `);
+        await client.query('COMMIT');
+        res.json({ status: 'ok',
+        data: {
+            allReviews: result1.rows,
+            specificProductReviews: result2.rows,
+            averageProductRating: result3.rows[0],  // Assuming one row returned for average
+            customerReviews: result4.rows,
+            fiveStarReviewCount: result5.rows[0],  // Assuming there's one row with the count
+            reviewDetailsWithNames: result6.rows,
+            recentReviews: result7.rows,
+            lowRatingReviews: result8.rows,
+            productRatings: result9.rows,
+            reviewsContainingGreat: result10.rows
+        }});
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-reviews | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+    // Get all shipping
+    app.get('/all-shipping', async (req, res) => {
+//      newrelic.setTransactionName('fetch-store-rental-income');
+      let client;
+      try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+
+        const result1 = await client.query(`
+          SELECT * FROM Shipping
+        `);
+        const result2 = await client.query(`
+          SELECT order_id, shipping_date, carrier FROM Shipping
+        `);
+        const result3 = await client.query(`
+           SELECT * FROM Shipping WHERE carrier = 'FedEx'
+        `);
+        const result4 = await client.query(`
+          SELECT AVG(delivery_date - shipping_date) FROM Shipping
+        `);
+        const result5 = await client.query(`
+          SELECT order_id FROM Shipping WHERE shipping_date BETWEEN '2023-03-01' AND '2023-03-31'
+        `);
+        const result6 = await client.query(`
+           SELECT COUNT(*) FROM Shipping WHERE delivery_date IS NULL
+        `);
+        const result7 = await client.query(`
+          SELECT s.shipping_id, o.order_date, s.shipping_date, s.delivery_date FROM Shipping s JOIN Orders o ON s.order_id = o.order_id
+        `);
+        const result8 = await client.query(`
+          SELECT * FROM Shipping ORDER BY shipping_date DESC
+        `);
+        const result9 = await client.query(`
+          SELECT shipping_address FROM Shipping WHERE order_id = 3
+        `);
+        const result10 = await client.query(`
+           SELECT carrier, COUNT(*) FROM Shipping GROUP BY carrier
+        `);
+        await client.query('COMMIT');
+        res.json({ status: 'ok',
+        data: {
+            allShipping: result1.rows,
+            shippingOverview: result2.rows,
+            fedExShipments: result3.rows,
+            averageDeliveryTime: result4.rows[0], // Assuming one row returned for average
+            marchShipments: result5.rows,
+            undeliveredCount: result6.rows[0], // Assuming there's one row with the count
+            shippingWithOrderData: result7.rows,
+            orderedRecentShipments: result8.rows,
+            orderId3Address: result9.rows,
+            carrierCounts: result10.rows
+        }});
+      } catch (err) {
+        if (client) {
+          await client.query('ROLLBACK');
+        }
+//        newrelic.noticeError(err);
+        console.error('fetch-all-shipping | Error:', err.message);
+        res.status(500).json({ error: `Database error: ${err.message}` });
+      } finally {
+        if (client) client.release();
+      }
+    });
+
+const port = process.env.PORT || 5000;
+  app.listen(port, '0.0.0.0', () => console.log(`${new Date().toISOString()} - Movie Matrix App is running on port ${port}`));
 }
 
 startMovieMatrixApp().catch((err) => {

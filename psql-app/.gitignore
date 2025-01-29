@@ -1,2 +1,5 @@
 .env
 .idea
+ ../.DS_Store
+        ../.idea/
+gi
