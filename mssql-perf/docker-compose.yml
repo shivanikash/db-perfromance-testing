@@ -23,9 +23,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 25G
+          memory: 15G
         reservations:
-          memory: 25G
+          memory: 15G
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -37,6 +37,8 @@ services:
         max-size: "10m"
         max-file: "3"
     restart: unless-stopped
+    networks:
+      - app-network
 
   k6:
     image: grafana/k6
@@ -48,6 +50,11 @@ services:
       hr-portal:
         condition: service_healthy
     command: run /scripts/load-test.js
+    networks:
+      - app-network
 
 volumes:
   sqldata:
+
+networks:
+  app-network:
