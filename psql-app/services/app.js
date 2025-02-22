@@ -1,5 +1,5 @@
-//const newrelic = require("newrelic");
-//console.log("New Relic agent status:", newrelic.agent.config.agent_enabled);
+const newrelic = require("newrelic");
+console.log("New Relic agent status:", newrelic.agent.config.agent_enabled);
 const express = require("express");
 const { Pool } = require('pg');
 
@@ -70,7 +70,7 @@ async function startMovieMatrixApp() {
 
   // 1. Search by hire_date (missing index)
     app.get('/actors/top_by_film_count', async (req, res) => {
-//      newrelic.setTransactionName('fetch-top-actors-by-film-count');
+     newrelic.setTransactionName('fetch-top-actors-by-film-count');
       let client;
       try {
         client = await pool.connect();
@@ -90,7 +90,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error(`/actors/top_by_film_count | Error: ${err.message}`, err);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -100,7 +100,7 @@ async function startMovieMatrixApp() {
 
     // 2. Search by name or department (inefficient OR + LIKE)
     app.get('/customers/top_spenders', async (req, res) => {
-//      newrelic.setTransactionName('fetch-top-spenders-customer');
+     newrelic.setTransactionName('fetch-top-spenders-customer');
       let client;
       try {
         client = await pool.connect();
@@ -118,7 +118,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         res.status(500).json({ error: err.message });
       } finally {
         if (client) client.release();
@@ -127,7 +127,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/store-rental-income', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -149,7 +149,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-store-rental-income | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -159,7 +159,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/all-customers', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -175,7 +175,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -185,7 +185,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/customer-names', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -201,7 +201,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-store-rental-income | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -211,7 +211,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/customer-lname', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -227,7 +227,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-store-rental-income | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -237,7 +237,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/customer-email', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -253,7 +253,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-store-rental-income | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -263,7 +263,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/customer-count', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -289,7 +289,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/customer-dis-name', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -305,7 +305,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-store-rental-income | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -315,7 +315,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/customers-order-date', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -331,7 +331,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-store-rental-income | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -341,7 +341,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/customers-limit-5', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -357,7 +357,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -368,7 +368,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/customers-null-phone', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -384,7 +384,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -395,7 +395,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/order-items', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -411,7 +411,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -422,7 +422,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/all-products', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -438,7 +438,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -448,7 +448,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/product-price', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -464,7 +464,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -475,7 +475,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/product-price-50', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -491,7 +491,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -502,7 +502,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/avg-product-price', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -518,7 +518,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -529,7 +529,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/product-category', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -545,7 +545,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -555,7 +555,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/product-stock-0', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -571,7 +571,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -582,7 +582,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/product-clothing-stock', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -598,7 +598,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -609,7 +609,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/product-order-price', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -625,7 +625,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -636,7 +636,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/product-distinct', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -652,7 +652,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -663,7 +663,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/product-new', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -679,7 +679,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -690,7 +690,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/all-orders', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -706,7 +706,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-orders | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -716,7 +716,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/order-id', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -732,7 +732,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -743,7 +743,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/order-shipped', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -759,7 +759,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -769,7 +769,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/order-amount', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -785,7 +785,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -795,7 +795,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/order-march', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -811,7 +811,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -821,7 +821,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/orders-pending', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -837,7 +837,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -847,7 +847,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/avg-amount-customer', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -863,7 +863,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -873,7 +873,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/orders-old-date', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -889,7 +889,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -899,7 +899,7 @@ async function startMovieMatrixApp() {
 
     // Get total rental income by store
     app.get('/order-amount-100', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -915,7 +915,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-customers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -925,7 +925,7 @@ async function startMovieMatrixApp() {
 
     // Get all order items
     app.get('/all-order-items', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -972,7 +972,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-order-items | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -982,7 +982,7 @@ async function startMovieMatrixApp() {
 
     // Get all employees
     app.get('/all-employees-details', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -1036,7 +1036,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-employees | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -1046,7 +1046,7 @@ async function startMovieMatrixApp() {
 
     // Get all suppliers
     app.get('/all-suppliers', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -1100,7 +1100,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-suppliers | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -1110,7 +1110,7 @@ async function startMovieMatrixApp() {
 
     // Get all payments
     app.get('/all-payments', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -1164,7 +1164,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-payments | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -1174,7 +1174,7 @@ async function startMovieMatrixApp() {
 
     // Get all categories
     app.get('/all-categories', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -1228,7 +1228,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-categories | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -1238,7 +1238,7 @@ async function startMovieMatrixApp() {
 
     // Get all reviews
     app.get('/all-reviews', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -1292,7 +1292,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-reviews | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
@@ -1302,7 +1302,7 @@ async function startMovieMatrixApp() {
 
     // Get all shipping
     app.get('/all-shipping', async (req, res) => {
-//      newrelic.setTransactionName('fetch-store-rental-income');
+     newrelic.setTransactionName('fetch-store-rental-income');
       let client;
       try {
         client = await pool.connect();
@@ -1356,7 +1356,7 @@ async function startMovieMatrixApp() {
         if (client) {
           await client.query('ROLLBACK');
         }
-//        newrelic.noticeError(err);
+       newrelic.noticeError(err);
         console.error('fetch-all-shipping | Error:', err.message);
         res.status(500).json({ error: `Database error: ${err.message}` });
       } finally {
