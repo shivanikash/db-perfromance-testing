@@ -10,8 +10,9 @@ services:
       - MSSQL_USER=${MSSQL_USER}
       - MSSQL_PASSWORD=${MSSQL_SA_PASSWORD}
       - MSSQL_DB=${MSSQL_DB}
-      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
-      - NEW_RELIC_APP_NAME=${NEW_RELIC_APP_NAME_HR}
+      - NEW_RELIC_LICENSE_KEY=a5d4346953ee241b2941ee3b4f9a89a4FFFFNRAL
+      - NEW_RELIC_APP_NAME=HrPortalStage
+      - NEW_RELIC_HOST='staging-collector.newrelic.com'
       - DB_CONNECTION_RETRIES=10
       - DB_RETRY_BASE_DELAY=5000
       - DB_RETRY_MAX_DELAY=30000
@@ -23,9 +24,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 25G
+          memory: 15G
         reservations:
-          memory: 25G
+          memory: 15G
       restart_policy:
         condition: on-failure
         delay: 5s
@@ -37,6 +38,8 @@ services:
         max-size: "10m"
         max-file: "3"
     restart: unless-stopped
+    networks:
+      - app-network
 
   k6:
     image: grafana/k6
@@ -48,6 +51,11 @@ services:
       hr-portal:
         condition: service_healthy
     command: run /scripts/load-test.js
+    networks:
+      - app-network
 
 volumes:
   sqldata:
+
+networks:
+  app-network:

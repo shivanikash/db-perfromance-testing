@@ -1,282 +1,441 @@
-// import newrelic from 'newrelic';
-import express from 'express';
-import sql from 'mssql';
-import DatabaseConnection from './db-connection.js';
-// console.log('New Relic agent status:', newrelic.agent.config.agent_enabled);
+const newrelic = require('newrelic');
+const express = require("express");
+const sql = require("mssql"); // Use 'mssql' package
 
+// Basic logging middleware
+const requestLogger = (serviceName) => (req, res, next) => {
+    const startTime = Date.now();
 
-const dbConfig = {
-    user: '',
-    password: '',
-    server: ``,
-    database: `AdventureWorks2022`,
-    port: 1433,
-    options: {
-        encrypt: true,
-        trustServerCertificate: true,
-        requestTimeout: 1200000
-    },
-    pool: {
-        max: parseInt(10000),
-        min: parseInt(100),
-        idleTimeoutMillis: parseInt(120000)
-    }
+    // Override res.json to capture the response
+    const originalJson = res.json;
+
+    res.json = function (data) {
+        const duration = Date.now() - startTime;
+        console.log(`${new Date().toISOString()} - ${serviceName} | ${req.method} ${req.originalUrl} | Status: ${res.statusCode} | Duration: ${duration}ms${data.error ? ` | Error: ${data.error}` : ''}`);
+        return originalJson.apply(this, arguments);
+    };
+    next();
 };
 
-const app = express();
-app.use(express.json());
+// Enhanced health check with console error logging
+async function checkDatabaseConnection(pool) {
+    try {
+        const request = pool.request();
+        await request.query('SELECT 1'); // Simple query to verify connection
+        return true;
+    } catch (err) {
+        console.error(new Date().toISOString(), 'Database connection check failed:', err.message);
+        return false;
+    }
+}
 
-const db = new DatabaseConnection(dbConfig);
-db.connect().catch(err => {
-    console.error('Failed to initialize database connection:', err);
+async function startHrPortalApp() {
+    const pool = new sql.ConnectionPool({
+        server: '20.235.136.68',
+        user: 'sa',
+        password: 'DevPassword@1234',
+        database: 'AdventureWorks2022',
+        pool: {
+            max: 100, // Adjust based on your needs and server capacity
+            min: 0,
+            idleTimeoutMillis: 120000,
+            acquireTimeoutMillis: 120000
+        },
+        options: {
+            encrypt: true, // Use this if you're on Windows Azure
+            trustServerCertificate: true, // Change to true for local dev / self-signed certs
+            connectionTimeout: 120000,
+            requestTimeout: 300000
+        }
+    });
+
+    await pool.connect();
+
+    pool.on('error', (err) => {
+        console.error('Unexpected error on idle client', err);
+        process.exit(-1);
+    });
+
+    const app = express();
+    app.use(express.json());
+    app.use(requestLogger('hr-portal'));
+
+    app.get('/health', async (req, res) => {
+        const dbHealthy = await checkDatabaseConnection(pool);
+        if (dbHealthy) {
+            res.json({ status: 'ok' });
+        } else {
+            res.status(500).json({ error: 'Database connection failed' });
+        }
+    });
+
+    app.get('/combined', async (req, res) => {
+        try {
+            const request = pool.request();
+
+            // Define all your queries
+            const queries = [
+                `SELECT TOP 10 ProductCategoryID, Name FROM Production.ProductCategory ORDER BY ProductCategoryID`,
+                `SELECT TOP 10 ProductCategoryID, Name FROM Production.ProductCategory ORDER BY ProductCategoryID`,
+                `SELECT TOP 10 BusinessEntityID, FirstName, LastName FROM Person.Person ORDER BY BusinessEntityID`,
+                `SELECT TOP 10 SalesOrderID, OrderDate, TotalDue FROM Sales.SalesOrderHeader ORDER BY OrderDate DESC`,
+                `SELECT TOP 10 ProductID, Name, ProductNumber FROM Production.Product WHERE ProductSubcategoryID = 5 ORDER BY ProductID`,
+            ];
+
+            // Execute all queries and collect results
+            const results = await Promise.all(queries.map(query => request.query(query)));
+
+            // Send all results back as a combined response
+            res.json({ status: 'ok', data: results });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+
+    app.get('/combined1', async (req, res) => {
+        try {
+            const request = pool.request();
+
+            const queries = [
+                `SELECT TOP 10 SalesOrderID, OrderDate, TotalDue FROM Sales.SalesOrderHeader ORDER BY TotalDue DESC;`,
+                `SELECT TOP 10 ProductID, Name, ListPrice FROM Production.Product ORDER BY ListPrice DESC;`,
+                `SELECT TOP 10 e.BusinessEntityID, p.FirstName, p.LastName, e.HireDate FROM HumanResources.Employee e JOIN Person.Person p ON e.BusinessEntityID = p.BusinessEntityID ORDER BY e.HireDate DESC;`,
+                `SELECT TOP 10 c.CustomerID, COUNT(soh.SalesOrderID) AS OrderCount FROM Sales.Customer c JOIN Sales.SalesOrderHeader soh ON c.CustomerID = soh.CustomerID GROUP BY c.CustomerID ORDER BY OrderCount DESC;`,
+                `SELECT TOP 10 Name, CreditRating FROM Purchasing.Vendor ORDER BY CreditRating DESC, Name;`,
+            ];
+
+            const results = await Promise.all(queries.map(query => request.query(query)));
+            res.json({ status: 'ok', data: results });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/combined2', async (req, res) => {
+        try {
+            const request = pool.request();
+
+            const queries = [
+                `SELECT TOP 10 ProductCategoryID, Name, ModifiedDate FROM Production.ProductCategory ORDER BY ModifiedDate DESC;`,
+                `SELECT TOP 10 p.FirstName, p.LastName, d.Name AS DepartmentName, e.JobTitle FROM HumanResources.Employee e JOIN Person.Person p ON e.BusinessEntityID = p.BusinessEntityID JOIN HumanResources.EmployeeDepartmentHistory edh ON e.BusinessEntityID = edh.BusinessEntityID JOIN HumanResources.Department d ON edh.DepartmentID = d.DepartmentID ORDER BY d.Name, e.JobTitle;`,
+                `SELECT TOP 10 a.AddressID, a.AddressLine1, COUNT(soh.SalesOrderID) AS OrdersShipped FROM Person.Address a JOIN Sales.SalesOrderHeader soh ON a.AddressID = soh.ShipToAddressID GROUP BY a.AddressID, a.AddressLine1 ORDER BY OrdersShipped DESC;`,
+                `SELECT TOP 10 TerritoryID, SUM(TotalDue) AS SalesTotal FROM Sales.SalesOrderHeader GROUP BY TerritoryID ORDER BY SalesTotal DESC;`,
+                `SELECT TOP 10 p.ProductID, p.Name, SUM(sod.OrderQty) AS TotalSold FROM Production.Product p JOIN Sales.SalesOrderDetail sod ON p.ProductID = sod.ProductID GROUP BY p.ProductID, p.Name ORDER BY TotalSold DESC;`
+            ];
+
+            const results = await Promise.all(queries.map(query => request.query(query)));
+            res.json({ status: 'ok', data: results });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/combined3', async (req, res) => {
+        try {
+            const request = pool.request();
+
+            // Define all your queries
+            const queries = [
+                `SELECT TOP 10 SalesOrderID, OrderDate, Status FROM Sales.SalesOrderHeader WHERE Status = 1 ORDER BY SalesOrderID`,
+                `SELECT TOP 10 AddressID, AddressLine1, City, StateProvinceID FROM Person.Address WHERE StateProvinceID = 32 ORDER BY AddressID`,
+                `SELECT TOP 10 Name, CreditRating FROM Purchasing.Vendor WHERE CreditRating = 2 ORDER BY Name`,
+                `SELECT TOP 10 SalesOrderID, OrderDate, SubTotal FROM Sales.SalesOrderHeader WHERE TerritoryID = 5 ORDER BY SalesOrderID`,
+                `SELECT TOP 10 CustomerID, PersonID, TerritoryID FROM Sales.Customer WHERE StoreID = 453 ORDER BY CustomerID`,
+                `SELECT TOP 10 e.BusinessEntityID, p.FirstName, p.LastName, e.HireDate FROM HumanResources.Employee e JOIN Person.Person p ON e.BusinessEntityID = p.BusinessEntityID ORDER BY e.HireDate DESC`
+            ];
+
+            // Execute all queries and collect results
+            const results = await Promise.all(queries.map(query => request.query(query)));
+
+            // Send all results back as a combined response
+            res.json({ status: 'ok', data: results });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/combined4', async (req, res) => {
+        try {
+            const request = pool.request();
+
+            const queries = [
+                `SELECT TOP 10 BusinessEntityID, NationalIDNumber, BirthDate FROM HumanResources.Employee ORDER BY BirthDate DESC`,
+                `SELECT TOP 10 ProductID, Name, StandardCost FROM Production.Product WHERE SafetyStockLevel < 500 ORDER BY StandardCost DESC`,
+                `SELECT TOP 10 Name, ProductLine, Class, Style FROM Production.Product WHERE Class IS NOT NULL ORDER BY Name`,
+                `SELECT TOP 10 SpecialOfferID, Description, DiscountPct FROM Sales.SpecialOffer ORDER BY DiscountPct DESC`,
+                `SELECT TOP 10 CustomerID, TerritoryID, AccountNumber FROM Sales.Customer WHERE TerritoryID IS NOT NULL ORDER BY AccountNumber`
+            ];
+
+            const results = await Promise.all(queries.map(query => request.query(query)));
+
+            res.json({ status: 'ok', data: results });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/combined5', async (req, res) => {
+        try {
+            const request = pool.request();
+
+            const queries = [
+                `SELECT TOP 10 SalesOrderID, DueDate, ShipDate FROM Sales.SalesOrderHeader WHERE ShipDate IS NOT NULL ORDER BY DueDate`,
+                `SELECT TOP 10 TerritoryID, Name, CountryRegionCode FROM Sales.SalesTerritory ORDER BY TerritoryID`,
+                `SELECT TOP 10 ProductModelID, Name FROM Production.ProductModel ORDER BY Name`
+            ];
+
+            const results = await Promise.all(queries.map(query => request.query(query)));
+
+            res.json({ status: 'ok', data: results });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/combined6', async (req, res) => {
+        try {
+            const request = pool.request();
+
+            const queries = [
+                `SELECT TOP 10 ContactTypeID FROM Person.ContactType ORDER BY ContactTypeID`,
+                `SELECT TOP 10 BusinessEntityID, JobTitle, HireDate FROM HumanResources.Employee WHERE JobTitle LIKE '%Manager%' ORDER BY HireDate DESC`,
+                `SELECT TOP 10 CountryRegionCode, ModifiedDate FROM Person.CountryRegion ORDER BY ModifiedDate DESC`,
+                `SELECT TOP 10 StateProvinceID, StateProvinceCode, CountryRegionCode FROM Person.StateProvince WHERE CountryRegionCode = 'US' ORDER BY StateProvinceID`,
+                `SELECT TOP 10 ProductSubcategoryID, ProductCategoryID FROM Production.ProductSubcategory WHERE ProductCategoryID = 1 ORDER BY ProductSubcategoryID`
+            ];
+
+            const results = await Promise.all(queries.map(query => request.query(query)));
+
+            res.json({ status: 'ok', data: results });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/combined7', async (req, res) => {
+        try {
+            const request = pool.request();
+
+            const queries = [
+                `SELECT TOP 10 CurrencyCode, ModifiedDate FROM Sales.Currency ORDER BY CurrencyCode`,
+                `SELECT TOP 10 ShiftID, StartTime, EndTime FROM HumanResources.Shift ORDER BY StartTime`,
+                `SELECT TOP 10 BusinessEntityID, NationalIDNumber, BirthDate FROM HumanResources.Employee ORDER BY BirthDate DESC`,
+                `SELECT ProductID FROM Production.Product WHERE ListPrice > 100 ORDER BY Name`,
+                `SELECT AddressID, AddressLine1, City FROM Person.Address WHERE StateProvinceID = 1 ORDER BY AddressID`,
+            ];
+
+            const results = await Promise.all(queries.map(query => request.query(query)));
+
+            res.json({ status: 'ok', data: results });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+
+    app.get('/combined8', async (req, res) => {
+        try {
+            const request = pool.request();
+
+            const queries = [
+                `SELECT TOP 10 CurrencyCode, Name FROM Sales.Currency ORDER BY Name`,
+                `SELECT ShiftID, Name, StartTime FROM HumanResources.Shift ORDER BY StartTime`,
+                `SELECT SalesOrderID, OrderDate FROM Sales.SalesOrderHeader WHERE OrderDate >= '2022-01-01' ORDER BY SalesOrderID`,
+                `SELECT ProductModelID, Name FROM Production.ProductModel ORDER BY ProductModelID`,
+                `SELECT TOP 10 CountryRegionCode, Name FROM Person.CountryRegion ORDER BY CountryRegionCode`,
+                `SELECT ContactTypeID, Name FROM Person.ContactType ORDER BY ContactTypeID`,
+            ];
+
+            const results = await Promise.all(queries.map(async query => {
+                const command = query.trim().split(' ')[0].toUpperCase();
+                return command === 'SELECT' ? request.query(query) : request.execute(query);
+            }));
+
+            res.json({ status: 'ok', data: results });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/combined9', async (req, res) => {
+        try {
+            const request = pool.request();
+
+            const queries = [
+                `SELECT TOP 10 BusinessEntityID, LoginID FROM HumanResources.Employee ORDER BY LoginID`,
+                `SELECT CustomerID, AccountNumber FROM Sales.Customer WHERE StoreID IS NULL ORDER BY CustomerID`,
+                `SELECT TOP 10 ProductID, Name FROM Production.Product WHERE MakeFlag = 1 ORDER BY Name`,
+                `SELECT TOP 10 Name, ListPrice FROM Production.Product ORDER BY ListPrice DESC`,
+                `SELECT DISTINCT HireDate FROM HumanResources.Employee ORDER BY HireDate DESC`,
+                `SELECT TOP 10 Name, ListPrice FROM Production.Product WHERE DaysToManufacture = 0 ORDER BY ListPrice`,
+            ];
+
+            const results = await Promise.all(queries.map(async query => {
+                const command = query.trim().split(' ')[0].toUpperCase();
+                return command === 'SELECT' ? request.query(query) : request.execute(query);
+            }));
+
+            res.json({ status: 'ok', data: results });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+// `/combined13`
+    app.get('/combined10', async (req, res) => {
+        try {
+            const request = pool.request();
+
+            const queries = [
+                `SELECT CustomerID, AccountNumber FROM Sales.Customer WHERE AccountNumber LIKE 'AW%' ORDER BY CustomerID`,
+                `SELECT TOP 10 Name, ModifiedDate FROM Production.ProductCategory ORDER BY ModifiedDate DESC`,
+                `SELECT TOP 10 ProductModelID, Name FROM Production.ProductModel ORDER BY ProductModelID`,
+                `SELECT AddressLine1, City FROM Person.Address WHERE StateProvinceID = 1 ORDER BY City`,
+                `SELECT BusinessEntityID, EmailAddress FROM Person.EmailAddress ORDER BY BusinessEntityID`,
+                `SELECT Name FROM Purchasing.Vendor WHERE CreditRating = 1 ORDER BY Name`,
+            ];
+
+            const results = await Promise.all(queries.map(async query => {
+                const command = query.trim().split(' ')[0].toUpperCase();
+                if (command === 'SELECT') {
+                    return request.query(query);
+                } else {
+                    throw new Error("Non-SELECT operations are not allowed");
+                }
+            }));
+
+            res.json({ status: 'ok', data: results.map(r => r.recordset) });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/combined11', async (req, res) => {
+        try {
+            const request = pool.request();
+
+            const queries = [
+                `SELECT ProductID, Color FROM Production.Product WHERE Color IS NOT NULL ORDER BY ProductID`,
+                `SELECT AddressID, AddressLine1 FROM Person.Address WHERE PostalCode LIKE '98%' ORDER BY AddressID`,
+                `SELECT PhoneNumber FROM Person.PersonPhone ORDER BY PhoneNumber`,
+                `SELECT ProductNumber FROM Production.Product WHERE SellStartDate > '2022-01-01' ORDER BY ProductNumber`,
+                `SELECT BusinessEntityID, FirstName, LastName FROM Person.Person WHERE EmailPromotion = 1 ORDER BY BusinessEntityID`,
+                `SELECT TransactionID, Quantity FROM Production.TransactionHistory WHERE Quantity > 100 ORDER BY TransactionID DESC`,
+            ];
+
+            const results = await Promise.all(queries.map(query => request.query(query)));
+
+            res.json({ status: 'ok', data: results.map(r => r.recordset) });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+
+    app.get('/combined12', async (req, res) => {
+        try {
+            const request = pool.request();
+
+            const queries = [
+                `SELECT ProductModelID FROM Production.ProductModel WHERE Instructions IS NOT NULL ORDER BY ProductModelID`,
+                `SELECT CreditCardID, CardType FROM Sales.CreditCard WHERE ExpYear > 2023 ORDER BY ExpYear`,
+                `SELECT SalesYTD FROM Sales.SalesPerson WHERE SalesYTD > 1000000 ORDER BY SalesYTD DESC`,
+                `SELECT ProductID, Color FROM Production.Product WHERE Color IS NOT NULL ORDER BY ProductID`,
+                `SELECT AddressID, AddressLine1 FROM Person.Address WHERE PostalCode LIKE '98%' ORDER BY AddressID`,
+                `SELECT PhoneNumber FROM Person.PersonPhone ORDER BY PhoneNumber`,
+            ];
+
+            const results = await Promise.all(queries.map(query => request.query(query)));
+
+            res.json({ status: 'ok', data: results.map(r => r.recordset) });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/combined13', async (req, res) => {
+        try {
+            const request = pool.request();
+
+            const queries = [
+                `SELECT TOP 10 TerritoryID, Name, CountryRegionCode FROM Sales.SalesTerritory ORDER BY SalesYTD DESC`,
+                `SELECT ProductID, Name FROM Production.Product WHERE SafetyStockLevel < 500 ORDER BY Name`,
+                `SELECT Name, CreditRating FROM Purchasing.Vendor WHERE CreditRating > 3 ORDER BY Name`,
+                `SELECT SalesOrderID, OrderDate, TotalDue FROM Sales.SalesOrderHeader WHERE TotalDue > 1000 ORDER BY OrderDate DESC`,
+                `SELECT JobTitle, HireDate FROM HumanResources.Employee WHERE JobTitle LIKE '%Manager%' ORDER BY HireDate`
+            ];
+
+            const results = await Promise.all(queries.map(query => request.query(query)));
+
+            res.json({ status: 'ok', data: results.map(r => r.recordset) });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database operation failed`, message: err.message });
+        }
+    });
+
+    app.get('/combined14', async (req, res) => {
+        try {
+            const request = pool.request();
+
+            const queries = [
+                `SELECT TOP 10 BusinessEntityID, FirstName, LastName FROM Person.Person ORDER BY LastName`,
+                `SELECT ProductID, Name, StandardCost FROM Production.Product WHERE StandardCost > 500 ORDER BY StandardCost DESC`,
+                `SELECT AddressID, AddressLine1, City FROM Person.Address WHERE City LIKE 'A%' ORDER BY AddressID`,
+                `SELECT SalesOrderID, OrderDate FROM Sales.SalesOrderHeader WHERE OrderDate > '2023-01-01' ORDER BY OrderDate`,
+                `SELECT DepartmentID, Name FROM HumanResources.Department ORDER BY Name`,
+                `SELECT ContactTypeID, Name FROM Person.ContactType ORDER BY Name`
+            ];
+
+            const results = await Promise.all(queries.map(query => request.query(query)));
+
+            res.json({ status: 'ok', data: results.map(r => r.recordset) });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database operation failed`, message: err.message });
+        }
+    });
+
+
+    const port = process.env.PORT || 3000;
+    app.listen(port, () => {
+        console.log(`hr app listening on port ${port}`);
+    });
+
+    // Graceful shutdown setup
+    async function gracefulShutdown() {
+        try {
+            await pool.close();
+            console.log('Connection pool closed gracefully');
+        } catch (err) {
+            console.error('Error closing the connection pool', err);
+        }
+        process.exit(0);
+    }
+
+    process.on('SIGINT', gracefulShutdown);
+    process.on('SIGTERM', gracefulShutdown);
+
+}
+
+startHrPortalApp().catch(err => {
+    console.error(new Date().toISOString(), 'Failed to start application:', err.message);
     process.exit(1);
 });
 
-// Health check endpoint
-app.get('/health', async (req, res) => {
-    if (!db.isReady()) {
-        console.log("DB is unhealthy...!")
-        return res.status(503).json({ 
-            status: 'unavailable', 
-            dbConnected: false 
-        });
-    }
-    try {
-        await db.getPool().request().query('SELECT 1');
-        console.log("DB is healthy...!")
-        res.json({ 
-            status: 'ok', 
-            dbConnected: true,
-            timestamp: new Date().toISOString()
-        });
-    } catch (err) {
-        res.status(503).json({ 
-            status: 'unavailable', 
-            dbConnected: false 
-        });
-    }
-});
-
-// Employee search endpoint
-app.get('/hr/employees/search', async (req, res) => {
-    if (!db.isReady()) {
-        return res.status(503).json({ error: 'Database not ready' });
-    }
-   
-    // newrelic.setTransactionName('hr-employees-search');
-
-    const { name, department, page = 1, pageSize = 20 } = req.query;
-    
-    try {
-        const pool = db.getPool();
-        const request = pool.request();
-        
-        let query = `
-            SELECT 
-                e.BusinessEntityID,
-                p.FirstName,
-                p.LastName,
-                e.JobTitle,
-                d.Name AS Department,
-                COUNT(*) OVER() as TotalCount
-            FROM HumanResources.Employee e
-            JOIN Person.Person p ON e.BusinessEntityID = p.BusinessEntityID
-            LEFT JOIN HumanResources.EmployeeDepartmentHistory edh 
-                ON e.BusinessEntityID = edh.BusinessEntityID 
-                AND edh.EndDate IS NULL
-            LEFT JOIN HumanResources.Department d 
-                ON edh.DepartmentID = d.DepartmentID
-            WHERE 1=1
-        `;
-
-        if (name) {
-            request.input('name', sql.NVarChar, `%${name}%`);
-            query += ` AND (p.FirstName LIKE @name OR p.LastName LIKE @name)`;
-        }
-
-        if (department) {
-            request.input('department', sql.NVarChar, `%${department}%`);
-            query += ` AND d.Name LIKE @department`;
-        }
-
-        query += `
-            ORDER BY p.LastName, p.FirstName
-            OFFSET @offset ROWS
-            FETCH NEXT @pageSize ROWS ONLY
-        `;
-
-        request.input('offset', sql.Int, (page - 1) * pageSize);
-        request.input('pageSize', sql.Int, pageSize);
-
-        const result = await request.query(query);
-
-        const totalCount = result.recordset[0]?.TotalCount || 0;
-        const totalPages = Math.ceil(totalCount / pageSize);
-
-        res.json({
-            employees: result.recordset,
-            pagination: {
-                currentPage: page,
-                pageSize,
-                totalPages,
-                totalCount
-            }
-        });
-    } catch (err) {
-        // newrelic.noticeError(err);
-        console.error('Database query error:', err);
-        res.status(500).json({
-            error: 'Database operation failed',
-            message: err.message
-        });
-    }
-});
-
-
-app.get('/hr/total-quantity-ordered', async (req, res) => {
-    try {
-        const result = await db.getPool().request().query(`
-      SELECT 
-          p.ProductID, 
-          p.Name, 
-          SUM(sod.OrderQty) AS TotalQuantityOrdered
-      FROM 
-          Production.Product p
-      JOIN 
-          Sales.SalesOrderDetail sod ON p.ProductID = sod.ProductID
-      GROUP BY 
-          p.ProductID, p.Name
-      ORDER BY 
-          TotalQuantityOrdered DESC;
-    `);
-        res.json(result.recordset);
-    } catch (err) {
-        res.status(500).json({ error: 'Database operation failed', message: err.message });
-    }
-});
-
-
-app.get('/hr/average-price', async (req, res) => {
-    try {
-        const result = await db.getPool().request().query(`
-      SELECT 
-          p.ProductID, 
-          p.Name, 
-          (SELECT AVG(UnitPrice) 
-           FROM Sales.SalesOrderDetail 
-           WHERE ProductID = p.ProductID) AS AveragePrice
-      FROM 
-          Production.Product p
-      WHERE 
-          p.ListPrice > (SELECT AVG(ListPrice) FROM Production.Product);
-    `);
-        res.json(result.recordset);
-    } catch (err) {
-        res.status(500).json({ error: 'Database operation failed', message: err.message });
-    }
-});
-
-// Cross Join Producing a Large Result Set
-app.get('/hr/product-category-cross', async (req, res) => {
-    try {
-        const result = await db.getPool().request().query(`
-      SELECT 
-          p.Name AS ProductName, 
-          c.Name AS CategoryName
-      FROM 
-          Production.Product p
-      CROSS JOIN 
-          Production.ProductCategory c;
-    `);
-        res.json(result.recordset);
-    } catch (err) {
-        res.status(500).json({ error: 'Database operation failed', message: err.message });
-    }
-});
-
-// Query with Multiple Conditions and Table Scans
-app.get('/hr/orders-large', async (req, res) => {
-    try {
-        const result = await db.getPool().request().query(`
-      SELECT 
-          c.CustomerID, 
-          sod.SalesOrderID, 
-          sod.LineTotal
-      FROM 
-          Sales.Customer c
-      JOIN 
-          Sales.SalesOrderHeader soh ON c.CustomerID = soh.CustomerID
-      JOIN 
-          Sales.SalesOrderDetail sod ON soh.SalesOrderID = sod.SalesOrderID
-      WHERE 
-          sod.OrderQty > 5 
-          AND soh.SubTotal > 1000
-          AND c.TerritoryID IN (2, 5, 6);
-    `);
-        res.json(result.recordset);
-    } catch (err) {
-        res.status(500).json({ error: 'Database operation failed', message: err.message });
-    }
-});
-
-// Sales Order Headers Overview
-app.get('/hr/sales-orders', async (req, res) => {
-    try {
-        const result = await db.getPool().request().query(`
-      SELECT soh.SalesOrderID FROM Sales.SalesOrderHeader soh;
-    `);
-        res.json(result.recordset);
-    } catch (err) {
-        res.status(500).json({ error: 'Database operation failed', message: err.message });
-    }
-});
-
-// Update with a Join
-app.put('/hr/update-product-price', async (req, res) => {
-    try {
-        await db.getPool().request().query(`
-      UPDATE p
-      SET p.ListPrice = p.ListPrice * 0.9  -- Applying a 10% discount
-      FROM Production.Product p
-      INNER JOIN Production.ProductSubcategory ps ON p.ProductSubcategoryID = ps.ProductSubcategoryID
-      INNER JOIN Production.ProductCategory pc ON ps.ProductCategoryID = pc.ProductCategoryID
-      WHERE pc.Name = 'Bikes';
-    `);
-        res.send('Product prices updated successfully.');
-    } catch (err) {
-        res.status(500).json({ error: 'Database operation failed', message: err.message });
-    }
-});
-
-// Insert new department
-app.post('/hr/insert-department', async (req, res) => {
-    try {
-        await db.getPool().request().query(`
-            INSERT INTO HumanResources.Department (Name, GroupName, ModifiedDate)
-            VALUES ('New Department', 'Research and Development', GETDATE())
-        `);
-        res.status(201).send('New Department added successfully.');
-    } catch (err) {
-        res.status(500).json({ error: 'Database operation failed', message: err.message });
-    }
-});
-
-// Insert new product
-app.post('/hr/insert-product', async (req, res) => {
-    try {
-        await db.getPool().request().query(`
-            INSERT INTO Production.Product (Name, ProductNumber, MakeFlag, FinishedGoodsFlag, Color, SafetyStockLevel, ReorderPoint, StandardCost, ListPrice, DaysToManufacture, SellStartDate)
-            VALUES ('New Product', 'NP-001', 1, 1, 'Blue', 100, 50, 20.0, 50.0, 5, GETDATE())
-        `);
-        res.status(201).send('New Product added successfully.');
-    } catch (err) {
-        res.status(500).json({ error: 'Database operation failed', message: err.message });
-    }
-});
-
-
-
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-});
+//e7b940c1721734ea579a3ba1ec58ecf0FFFFNRAL
+//739cc4d2cbdca96be716b5797940f39eFFFFNRAL

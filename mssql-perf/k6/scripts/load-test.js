@@ -6,7 +6,7 @@ export const options = {
   scenarios: {
     hr_portal: {
       executor: 'constant-vus',
-      vus: 2000,
+      vus: 50,
       duration: '10m',
       exec: 'hrPortal'
     }
@@ -46,7 +46,7 @@ function makeRequest(baseUrl, endpoint) {
     });
 
     // Adaptive sleep
-    sleep(randomIntBetween(1, 3));
+    sleep(randomIntBetween(3,3));
 
   } catch (err) {
     sleep(2); // Sleep on error
@@ -56,14 +56,34 @@ function makeRequest(baseUrl, endpoint) {
 // HR Portal endpoints
 export function hrPortal() {
   const endpoints = [
-    { path: '/hr/employees/search', method: 'GET' },
-    { path: '/health', method: 'GET' },
-    { path: '/hr/total-quantity-ordered', method: 'GET' },
-    { path: '/hr/average-price', method: 'GET' },
-    { path: '/hr/product-category-cross', method: 'GET' },
-    { path: '/hr/orders-large', method: 'GET' },
-    { path: '/hr/sales-orders', method: 'GET' },
-    { path: '/hr/update-product-price', method: 'PUT' }
+    // { path: '/health', method: 'GET' },
+    // { path: '/people', method: 'GET' },
+    // { path: '/product-categories', method: 'GET' },
+    // { path: '/department-employees', method: 'GET' },
+    // { path: '/recent-sales-orders', method: 'GET' },
+    // { path: '/subcategory-products', method: 'GET' },
+    // { path: '/order-status', method: 'GET' },
+    // { path: '/state-addresses', method: 'GET' },
+    // { path: '/specific-credit-vendors', method: 'GET' },
+    // { path: '/territory-sales-orders', method: 'GET' },
+    // { path: '/store-customers', method: 'GET' },
+    // { path: '/recently-hired-employees', method: 'GET' },
+    { path: '/combined', method: 'GET' },
+    { path: '/combined1', method: 'GET' },
+    { path: '/combined2', method: 'GET' },
+    { path: '/combined3', method: 'GET' },
+    { path: '/combined4', method: 'GET' },
+    { path: '/combined5', method: 'GET' },
+    { path: '/combined6', method: 'GET' },
+    { path: '/combined7', method: 'GET' },
+    { path: '/combined8', method: 'GET' },
+    { path: '/combined9', method: 'GET' },
+    { path: '/combined10', method: 'GET' },
+    { path: '/combined11', method: 'GET' },
+    { path: '/combined12', method: 'GET' },
+    { path: '/combined13', method: 'GET' },
+    { path: '/combined14', method: 'GET' },
+
   ];
   makeRequest(BASE_URLS.HR_PORTAL, endpoints[Math.floor(Math.random() * endpoints.length)]);
 }
