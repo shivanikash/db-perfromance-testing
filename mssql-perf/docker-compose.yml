@@ -10,7 +10,7 @@ services:
       - MSSQL_USER=${MSSQL_USER}
       - MSSQL_PASSWORD=${MSSQL_SA_PASSWORD}
       - MSSQL_DB=${MSSQL_DB}
-      - NEW_RELIC_LICENSE_KEY=a5d4346953ee241b2941ee3b4f9a89a4FFFFNRAL
+      - NEW_RELIC_LICENSE_KEY=asdf
       - NEW_RELIC_APP_NAME=HrPortalStage
       - NEW_RELIC_HOST='staging-collector.newrelic.com'
       - DB_CONNECTION_RETRIES=10
