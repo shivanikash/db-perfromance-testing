@@ -31,9 +31,9 @@ async function checkDatabaseConnection(pool) {
 
 async function startHrPortalApp() {
     const pool = new sql.ConnectionPool({
-        server: '20.235.136.68',
-        user: 'sa',
-        password: 'DevPassword@1234',
+        server: 'asdf',
+        user: '',
+        password: 'sdfsa',
         database: 'AdventureWorks2022',
         pool: {
             max: 100, // Adjust based on your needs and server capacity
