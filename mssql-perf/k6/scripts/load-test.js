@@ -6,7 +6,7 @@ export const options = {
   scenarios: {
     hr_portal: {
       executor: 'constant-vus',
-      vus: 1800,
+      vus: 50,
       duration: '10m',
       exec: 'hrPortal'
     }

@@ -1,3 +1,4 @@
+const newrelic = require('newrelic');
 const express = require("express");
 const sql = require("mssql"); // Use 'mssql' package
 
@@ -435,3 +436,6 @@ startHrPortalApp().catch(err => {
     console.error(new Date().toISOString(), 'Failed to start application:', err.message);
     process.exit(1);
 });
+
+//e7b940c1721734ea579a3ba1ec58ecf0FFFFNRAL
+//739cc4d2cbdca96be716b5797940f39eFFFFNRAL
