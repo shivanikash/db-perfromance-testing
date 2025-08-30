@@ -24,9 +24,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 15G
+          memory: 5G
         reservations:
-          memory: 15G
+          memory: 3G
       restart_policy:
         condition: on-failure
         delay: 5s

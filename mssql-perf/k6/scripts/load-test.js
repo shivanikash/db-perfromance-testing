@@ -2,13 +2,29 @@ import http from 'k6/http';
 import { check, sleep } from 'k6';
 import { randomIntBetween } from 'k6/crypto';
 
+function generateRampingStages(start, end, increment, duration) {
+  const stages = [];
+  // Ramp up
+  for (let i = start; i <= end; i += increment) {
+    stages.push({ duration: duration, target: i });
+  }
+  // Ramp down
+  for (let i = end - increment; i >= start; i -= increment) {
+    stages.push({ duration: duration, target: i });
+  }
+  return stages;
+}
+
+// Generate stages to ramp up from 1 to 500 and back down to 1, with 3-minute increments of 2 VUs
+const stages = generateRampingStages(1, 200, 2, '3m');
+
 export const options = {
   scenarios: {
-    hr_portal: {
-      executor: 'constant-vus',
-      vus: 50,
-      duration: '10m',
-      exec: 'hrPortal'
+    test_app: {
+      executor: 'ramping-vus',
+      startVUs: 0,
+      stages: stages,
+      exec: 'testApp'
     }
   },
   thresholds: {
@@ -19,6 +35,20 @@ export const options = {
 const BASE_URLS = {
   HR_PORTAL: __ENV.HR_PORTAL_URL || 'http://hr-portal:3000'
 };
+
+const endpoints = [
+  { path: '/load1', method: 'GET' },
+  { path: '/load2', method: 'GET' },
+  { path: '/load3', method: 'GET' },
+  { path: '/load4', method: 'GET' },
+  { path: '/load5', method: 'GET' },
+  { path: '/load6', method: 'GET' },
+  { path: '/load7', method: 'GET' },
+  { path: '/load8', method: 'GET' },
+  { path: '/load9', method: 'GET' },
+  { path: '/load10', method: 'GET' },
+];
+
 
 function makeRequest(baseUrl, endpoint) {
   const url = `${baseUrl}${endpoint.path}`;
@@ -53,37 +83,10 @@ function makeRequest(baseUrl, endpoint) {
   }
 }
 
-// HR Portal endpoints
-export function hrPortal() {
-  const endpoints = [
-    // { path: '/health', method: 'GET' },
-    // { path: '/people', method: 'GET' },
-    // { path: '/product-categories', method: 'GET' },
-    // { path: '/department-employees', method: 'GET' },
-    // { path: '/recent-sales-orders', method: 'GET' },
-    // { path: '/subcategory-products', method: 'GET' },
-    // { path: '/order-status', method: 'GET' },
-    // { path: '/state-addresses', method: 'GET' },
-    // { path: '/specific-credit-vendors', method: 'GET' },
-    // { path: '/territory-sales-orders', method: 'GET' },
-    // { path: '/store-customers', method: 'GET' },
-    // { path: '/recently-hired-employees', method: 'GET' },
-    { path: '/combined', method: 'GET' },
-    { path: '/combined1', method: 'GET' },
-    { path: '/combined2', method: 'GET' },
-    { path: '/combined3', method: 'GET' },
-    { path: '/combined4', method: 'GET' },
-    { path: '/combined5', method: 'GET' },
-    { path: '/combined6', method: 'GET' },
-    { path: '/combined7', method: 'GET' },
-    { path: '/combined8', method: 'GET' },
-    { path: '/combined9', method: 'GET' },
-    { path: '/combined10', method: 'GET' },
-    { path: '/combined11', method: 'GET' },
-    { path: '/combined12', method: 'GET' },
-    { path: '/combined13', method: 'GET' },
-    { path: '/combined14', method: 'GET' },
-
-  ];
-  makeRequest(BASE_URLS.HR_PORTAL, endpoints[Math.floor(Math.random() * endpoints.length)]);
+// Test App endpoints
+export function testApp() {
+  for (let i = 0; i < endpoints.length; i++) {
+    makeRequest(BASE_URLS.HR_PORTAL, endpoints[i]);
+    sleep(0.5);
+  }
 }

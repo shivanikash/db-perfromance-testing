@@ -31,21 +31,21 @@ async function checkDatabaseConnection(pool) {
 
 async function startHrPortalApp() {
     const pool = new sql.ConnectionPool({
-        server: 'asdf',
-        user: '',
-        password: 'sdfsa',
-        database: 'AdventureWorks2022',
+        server: process.env.MSSQL_HOST || '10.7.0.10',
+        user: process.env.MSSQL_USER || 'k6loaduser',
+        password: process.env.MSSQL_PASSWORD || 'Loader!@12',
+        database: process.env.MSSQL_DB || 'AdventureWorks2022',
         pool: {
-            max: 100, // Adjust based on your needs and server capacity
-            min: 0,
-            idleTimeoutMillis: 120000,
-            acquireTimeoutMillis: 120000
+            max: parseInt(process.env.DB_POOL_MAX) || 100,
+            min: parseInt(process.env.DB_POOL_MIN) || 0,
+            idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT) || 120000,
+            acquireTimeoutMillis: parseInt(process.env.DB_ACQUIRE_TIMEOUT) || 120000
         },
         options: {
             encrypt: true, // Use this if you're on Windows Azure
             trustServerCertificate: true, // Change to true for local dev / self-signed certs
-            connectionTimeout: 120000,
-            requestTimeout: 300000
+            connectionTimeout: parseInt(process.env.DB_CONNECTION_TIMEOUT) || 120000,
+            requestTimeout: parseInt(process.env.DB_REQUEST_TIMEOUT) || 300000
         }
     });
 
@@ -410,6 +410,165 @@ async function startHrPortalApp() {
         }
     });
 
+    // Load Testing APIs - load1 to load10
+    app.get('/load1', async (req, res) => {
+        try {
+            const request = pool.request();
+            const query = `UPDATE Sales.SalesOrderHeader
+SET Freight = Freight + 10
+WHERE SalesOrderID IN (
+    SELECT SalesOrderID FROM Sales.SalesOrderDetail WHERE UnitPrice > 500
+);`;
+            
+            const result = await request.query(query);
+            res.json({ status: 'ok', rowsAffected: result.rowsAffected[0] });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/load2', async (req, res) => {
+        try {
+            const request = pool.request();
+            const query = `SELECT soh.SalesOrderID, soh.OrderDate, c.CustomerID
+FROM Sales.SalesOrderHeader soh
+JOIN Sales.Customer c ON soh.CustomerID = c.CustomerID
+WHERE soh.Status = 5;`;
+            
+            const result = await request.query(query);
+            res.json({ status: 'ok', data: result.recordset });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/load3', async (req, res) => {
+        try {
+            const request = pool.request();
+            const query = `SELECT p.ProductID, p.Name, v.TotalOrders
+FROM Production.Product p
+CROSS APPLY (
+    SELECT COUNT(*) AS TotalOrders
+    FROM Sales.SalesOrderDetail sod
+    WHERE sod.ProductID = p.ProductID
+) v
+ORDER BY v.TotalOrders DESC;`;
+            
+            const result = await request.query(query);
+            res.json({ status: 'ok', data: result.recordset });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/load4', async (req, res) => {
+        try {
+            const request = pool.request();
+            const query = `SELECT * FROM Production.Product
+WHERE Name LIKE '%Mountain%';`;
+            
+            const result = await request.query(query);
+            res.json({ status: 'ok', data: result.recordset });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/load5', async (req, res) => {
+        try {
+            const request = pool.request();
+            const query = `SELECT ProductID, SUM(OrderQty * UnitPrice) AS TotalSales
+FROM Sales.SalesOrderDetail
+GROUP BY ProductID
+ORDER BY TotalSales DESC;`;
+            
+            const result = await request.query(query);
+            res.json({ status: 'ok', data: result.recordset });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/load6', async (req, res) => {
+        try {
+            const request = pool.request();
+            const query = `SELECT TOP 100 ProductID, SUM(UnitPrice) AS TotalPrice
+FROM Sales.SalesOrderDetail
+GROUP BY ProductID
+ORDER BY TotalPrice DESC;`;
+            
+            const result = await request.query(query);
+            res.json({ status: 'ok', data: result.recordset });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/load7', async (req, res) => {
+        try {
+            const request = pool.request();
+            const query = `SELECT * FROM Sales.SalesOrderDetail WHERE UnitPrice > 100;`;
+            
+            const result = await request.query(query);
+            res.json({ status: 'ok', data: result.recordset });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/load8', async (req, res) => {
+        try {
+            const request = pool.request();
+            const query = `SELECT AddressID, AddressLine1, City FROM Person.Address WHERE City LIKE 'A%' ORDER BY AddressID;`;
+            
+            const result = await request.query(query);
+            res.json({ status: 'ok', data: result.recordset });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/load9', async (req, res) => {
+        try {
+            const request = pool.request();
+            const query = `SELECT p.Name, soh.OrderDate, sod.UnitPrice
+FROM Production.Product p
+JOIN Sales.SalesOrderDetail sod ON p.ProductID = sod.ProductID
+JOIN Sales.SalesOrderHeader soh ON sod.SalesOrderID = soh.SalesOrderID
+WHERE soh.OrderDate BETWEEN '2022-01-01' AND '2022-12-31';`;
+            
+            const result = await request.query(query);
+            res.json({ status: 'ok', data: result.recordset });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
+    app.get('/load10', async (req, res) => {
+        try {
+            const request = pool.request();
+            const query = `SELECT ProductID, SUM(OrderQty * UnitPrice) AS TotalSales
+FROM Sales.SalesOrderDetail
+GROUP BY ProductID
+ORDER BY TotalSales DESC;`;
+            
+            const result = await request.query(query);
+            res.json({ status: 'ok', data: result.recordset });
+        } catch (err) {
+            console.error(new Date().toISOString(), 'Query execution failed:', err.message);
+            res.status(500).json({ error: `Database error: ${err.message}` });
+        }
+    });
+
 
     const port = process.env.PORT || 3000;
     app.listen(port, () => {
@@ -437,5 +596,3 @@ startHrPortalApp().catch(err => {
     process.exit(1);
 });
 
-//e7b940c1721734ea579a3ba1ec58ecf0FFFFNRAL
-//739cc4d2cbdca96be716b5797940f39eFFFFNRAL
